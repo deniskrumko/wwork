@@ -1,2 +1,3 @@
 # wwork
-Time managing command line app
+
+Time managing command line app. Just wworks.
