@@ -1,16 +1,17 @@
+import config
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from clint.textui import colored, indent, puts
 
-import config
 from libs import app
 
 
 class WWorkApp(app.Application):
     STORAGE_RELATIVE_PATH = '/storage/'
     PREVIOUS_DAY = ('prev', 'past', 'y')
+    PREPREVIOUS_DAY = ('yy',)
     COLORS = {
         'blu': ('\x1b[34m\x1b[22m', '\x1b[39m\x1b[22m'),
         'gre': ('\x1b[32m\x1b[22m', '\x1b[39m\x1b[22m'),
@@ -24,6 +25,10 @@ class WWorkApp(app.Application):
         self._previous = any([
             self.arguments[0] in self.PREVIOUS_DAY,
             self.arguments[-1] in self.PREVIOUS_DAY,
+        ])
+        self._preprevious = any([
+            self.arguments[0] in self.PREPREVIOUS_DAY,
+            self.arguments[-1] in self.PREPREVIOUS_DAY,
         ])
         self._file = None
 
@@ -138,7 +143,7 @@ class WWorkApp(app.Application):
         self.print(result)
         self.print('<gre>Task is logged ✓</gre>', pre='')
 
-    @app.register(*PREVIOUS_DAY, empty_args=True)
+    @app.register(*(PREVIOUS_DAY+PREPREVIOUS_DAY), empty_args=True)
     def main_screen(self):
         """Command to show main app screen.
 
@@ -160,7 +165,7 @@ class WWorkApp(app.Application):
 
         with indent(2):
 
-            if self._previous:
+            if self._previous or self._preprevious:
                 self.print(f'<blu>FILE: {self.file_path}</blu>')
 
             # Show main table
@@ -219,6 +224,7 @@ class WWorkApp(app.Application):
     @property
     def file_path(self):
         delta = -1 if self._previous else None
+        delta = -2 if self._preprevious else delta
         return self.storage_dir + self.get_date(delta) + '.txt'
 
     @property
