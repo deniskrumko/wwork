@@ -1,3 +1,6 @@
 storage/
+build/
+dist/
+*.egg-info/
 *.py[co]
 __pycache__

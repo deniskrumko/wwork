@@ -1,4 +1,0 @@
-DEFAULT_JIRA_CODE = 'MRPL'
-DATE_FORMAT = '%Y-%m-%d'
-TIME_FORMAT = '%H:%M'
-MAIN_TASK_CODE = 'Main'
