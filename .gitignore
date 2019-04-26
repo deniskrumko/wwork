@@ -1,6 +1,7 @@
 storage/
 build/
 dist/
+.DS_Store
 *.egg-info/
 *.py[co]
 __pycache__

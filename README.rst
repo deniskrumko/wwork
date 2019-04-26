@@ -1,5 +1,6 @@
-.. image:: https://raw.github.com/timothycrosley/isort/master/logo.png
-    :alt: isort
+.. image:: https://raw.githubusercontent.com/deniskrumko/wwork/wwork2/wwork.jpg
+    :height: 128px
+    :alt: wwork
 
 ########
 
