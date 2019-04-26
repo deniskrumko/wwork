@@ -10,8 +10,6 @@ from libs import app
 
 class WWorkApp(app.Application):
     STORAGE_RELATIVE_PATH = '/storage/'
-    PREVIOUS_DAY = ('prev', 'past', 'y')
-    PREPREVIOUS_DAY = ('yy',)
     COLORS = {
         'blu': ('\x1b[34m\x1b[22m', '\x1b[39m\x1b[22m'),
         'gre': ('\x1b[32m\x1b[22m', '\x1b[39m\x1b[22m'),
@@ -22,15 +20,12 @@ class WWorkApp(app.Application):
     def __init__(self, *args, **kwargs):
         """Initialization method."""
         super().__init__(*args, **kwargs)
-        self._previous = any([
-            self.arguments[0] in self.PREVIOUS_DAY,
-            self.arguments[-1] in self.PREVIOUS_DAY,
-        ])
-        self._preprevious = any([
-            self.arguments[0] in self.PREPREVIOUS_DAY,
-            self.arguments[-1] in self.PREPREVIOUS_DAY,
-        ])
         self._file = None
+        self.previous = None
+
+        for flag in self.flags.all:
+            if flag and flag.startswith('-y'):
+                self.previous = -flag.count('y')
 
     @app.register('start')
     def start(self):
@@ -115,8 +110,24 @@ class WWorkApp(app.Application):
             duration = self.get_duration(start=-2, end=-1)
             self.print(f'Pause duration is <yel>{duration}</yel>')
 
+    @app.register('time')
+    def count_time(self):
+        if len(self.extra) != 1:
+            self.exit('Incorrect command format')
+
+        value = float(self.extra[0])
+        remaining = 8.0 - value
+        self.print(
+            f'{value} is {int(value // 1)} hours and '
+            f'{int(value % 1 * 60)} minutes'
+        )
+        self.print(
+            f'Remaining time is {int(remaining // 1)} hours and '
+            f'{int(remaining % 1 * 60)} minutes'
+        )
+
     @app.register(default=True)
-    def log_task(self):
+    def log_task(self, task=None, msg=None):
         """Command to log your work (default command).
 
         Example:
@@ -125,15 +136,25 @@ class WWorkApp(app.Application):
             ww Standup
 
         """
+        if len(set(self.command)) == 1:
+            self.exit('Probably, you won\'t log task with one symbol...')
+
         assert self.file
         assert self.not_on_pause
 
-        if self.command.split('-')[-1].isdigit():
-            msg = ' '.join(self.extra)
-            string = f'{config.DEFAULT_JIRA_CODE}-{self.command}: {msg}'
+        if task:
+            string = f'{task}: '
+        elif self.command.split('-')[-1].isdigit():
+            string = f'{config.DEFAULT_JIRA_CODE}-{self.command}: '
+        elif self.command.split('.')[-1].isdigit():
+            a, b = self.command.split('.')
+            string = f'{a}-{b}: '
         else:
-            msg = ' '.join(self.extra)
-            string = f'{config.MAIN_TASK_CODE}: {self.command} {msg}'
+            string = f'{config.MAIN_TASK_CODE}: {self.command} '
+
+        msg = msg or ' '.join(self.extra)
+
+        string += msg
 
         if not string.endswith(('.', '!', '?', ')', '(')):
             string = string.strip() + '.'
@@ -143,13 +164,12 @@ class WWorkApp(app.Application):
         self.print(result)
         self.print('<gre>Task is logged ✓</gre>', pre='')
 
-    @app.register(*(PREVIOUS_DAY+PREPREVIOUS_DAY), empty_args=True)
+    @app.register(empty_args=True)
     def main_screen(self):
         """Command to show main app screen.
 
         Example:
             ww       # main screen for current day
-            ww prev  # main screen for previous day
 
         """
         assert self.file
@@ -164,8 +184,9 @@ class WWorkApp(app.Application):
         }
 
         with indent(2):
-
-            if self._previous or self._preprevious:
+            if self.previous is not None:
+                formatted = self.date.strftime('%B %d, %A')
+                self.print(f'<yel>DATE: {formatted}</yel>')
                 self.print(f'<blu>FILE: {self.file_path}</blu>')
 
             # Show main table
@@ -193,6 +214,10 @@ class WWorkApp(app.Application):
     def edit(self):
         editor = 'vim'
         os.system(' '.join([editor, self.file_path]))
+
+    @app.register('st', 'stand', 'standup')
+    def standup(self):
+        self.log_task(task='RND-4', msg='Стендап в слаке')
 
     # Helper methods
     # ========================================================================
@@ -223,9 +248,11 @@ class WWorkApp(app.Application):
 
     @property
     def file_path(self):
-        delta = -1 if self._previous else None
-        delta = -2 if self._preprevious else delta
-        return self.storage_dir + self.get_date(delta) + '.txt'
+        return self.storage_dir + self.get_date(delta=self.previous) + '.txt'
+
+    @property
+    def date(self):
+        return self.get_date(delta=self.previous, as_string=False)
 
     @property
     def file(self):
@@ -245,13 +272,13 @@ class WWorkApp(app.Application):
 
         return True
 
-    def get_date(self, delta=None):
+    def get_date(self, delta=None, as_string=True):
         date = datetime.now()
 
         if delta is not None:
             date += timedelta(days=delta)
 
-        return date.strftime(config.DATE_FORMAT)
+        return date.strftime(config.DATE_FORMAT) if as_string else date
 
     def get_current_time(self):
         """Get current time in HH:MM format."""

@@ -22,8 +22,12 @@ class Application(object):
     def __init__(self):
         """Initialization method."""
         self.arguments = arguments.Args()
-        self.command = self.arguments[0] if self.arguments else None
-        self.extra = self.arguments[1:] if self.arguments else None
+        self.flags = self.arguments.flags
+        self.not_flags = self.arguments.not_flags
+
+        self.command = self.not_flags[0] if self.not_flags else None
+        self.extra = self.not_flags[1:] if self.not_flags else None
+
         self.default_command = commands_registry.get('__default__')
         self.empty_args_command = commands_registry.get('__empty_args__')
 
