@@ -217,7 +217,7 @@ class WWorkApp(app.Application):
 
     @app.register('st', 'stand', 'standup')
     def standup(self):
-        self.log_task(task='RND-4', msg='Стендап в слаке')
+        self.log_task(task='RND-4', msg='[STANDUP]')
 
     # Helper methods
     # ========================================================================
