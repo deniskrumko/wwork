@@ -142,6 +142,13 @@ class WWorkApp(app.Application):
         assert self.file
         assert self.not_on_pause
 
+        change_time = 0
+
+        for word in tuple(self.extra):
+            if word.startswith('+'):
+                change_time = int(word[1:])
+                self.extra.remove(word)
+
         if task:
             string = f'{task}: '
         elif self.command.split('-')[-1].isdigit():
@@ -159,7 +166,7 @@ class WWorkApp(app.Application):
         if not string.endswith(('.', '!', '?', ')', '(')):
             string = string.strip() + '.'
 
-        result = self.write('w', string)
+        result = self.write('w', string, change_time=change_time)
 
         self.print(result)
         self.print('<gre>Task is logged ✓</gre>', pre='')
@@ -297,9 +304,19 @@ class WWorkApp(app.Application):
         return f'{duration_str} ({start_str} - {stop_str})' \
             if as_string else duration
 
-    def write(self, code, msg, new_file=False):
+    def write(self, code, msg, new_file=False, change_time=False):
         """Write line with time and message to file."""
-        task_time = self.get_current_time()
+        if change_time:
+            last_time_str = self.file[-1][2:7]
+            last_time = datetime.strptime(last_time_str, config.TIME_FORMAT)
+            last_time += timedelta(minutes=change_time)
+            task_time = last_time.strftime(config.TIME_FORMAT)
+            self.print(
+                f'Modified time +{change_time} minutes: {task_time}',
+                color=colored.yellow, pre='\n'
+            )
+        else:
+            task_time = self.get_current_time()
         line = '{} {}   {}\n'.format(code, task_time, msg)
         write_mode = 'w' if new_file else 'a'
         try:
