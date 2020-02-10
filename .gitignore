@@ -5,3 +5,5 @@ dist/
 *.egg-info/
 *.py[co]
 __pycache__
+logs/
+TODO.md
