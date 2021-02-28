@@ -10,7 +10,6 @@ class Color:
 
         For example:
             Color(91)('message')
-
         """
         return self.__colored_value(value)
 
@@ -19,7 +18,6 @@ class Color:
 
         For example:
             Color(91) * 'message'
-
         """
         return self.__colored_value(value)
 
@@ -28,7 +26,6 @@ class Color:
 
         For example:
             'message' * Color(91)
-
         """
         return self.__colored_value(value)
 
@@ -37,16 +34,22 @@ class Color:
 
         For example:
             Color(91).print('message')
-
         """
         print(self.__colored_value(value))
 
-    def __colored_value(self, value) -> str:
+    @property
+    def code(self) -> tuple:
+        if not self.__color_number:
+            return '', ''
+
+        return f'\033[{self.__color_number}m', '\033[00m'
+
+    def __colored_value(self, value: str) -> str:
         """Get colored value."""
         if not self.__color_number:
             return value
 
-        return f'\033[{self.__color_number}m{value}\033[00m'
+        return value.join(self.code)
 
 
 # Available colors
@@ -56,3 +59,14 @@ red = Color(91)
 green = Color(92)
 yellow = Color(93)
 blue = Color(94)
+
+
+def printer(msg, end='\n'):
+    """Print colored message."""
+    COLORS = {'b': blue, 'g': green, 'r': red, 'y': yellow}
+
+    for name, color in COLORS.items():
+        msg = msg.replace(f'<{name}>', color.code[0])
+        msg = msg.replace(f'</{name}>', color.code[1])
+
+    print(msg, end=end)

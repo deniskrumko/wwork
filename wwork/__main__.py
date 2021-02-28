@@ -1,5 +1,3 @@
-if __name__ == '__main__':
-    from settings import init_settings
-    init_settings()
+import wwork.main
 
-    import main  # noqa
+wwork.main.main()

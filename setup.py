@@ -2,37 +2,39 @@
 
 from setuptools import setup
 
+from wwork import get_version
+
 with open('README.rst') as f:
     readme = f.read()
 
 setup(
     name='wwork',
-    version='0.0.1',
-    description='CLI for managing work logs with JIRA integration',
+    version=get_version(),
+    description='CLI for time management',
     long_description=readme,
-    author='Timothy Crosley',
-    author_email='timothy.crosley@gmail.com',
+    author='Denis Krumko',
+    author_email='dkrumko@gmail.com',
     url='https://github.com/deniskrumko/wwork',
     license="MIT",
     entry_points={
         'console_scripts': [
-            'wwork = wwork.main:main',
+            'ww = wwork.main:main',
         ],
     },
     packages=['wwork'],
-    python_requires=">=3.6",
-    keywords='Time management, Logging, Work, JIRA',
+    python_requires=">=3.7",
+    keywords='CLI, Jira, Time management',
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'Natural Language :: English',
         'Environment :: Console',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: Implementation :: CPython',
         'Topic :: Software Development :: Libraries',
         'Topic :: Utilities',

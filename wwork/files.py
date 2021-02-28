@@ -1,131 +1,106 @@
-import shelve
+import os
+import pickle
+from datetime import timedelta
 from pathlib import Path
+from time import time
+from typing import Union
 
-import exceptions
-from entries import Entry
-from utils import classproperty, debugger
-
-BASE_PATH = Path(__file__).parent.absolute()
-STORAGE_PATH = BASE_PATH.joinpath('storage')
-
-Path(STORAGE_PATH).mkdir(exist_ok=True)
+from entries import LogEntry
+from resources import TIME_FORMAT
 
 
-class FileManager:
-    """Class for managing ``File`` objects."""
+class BaseFile:
+    """Base class for files."""
 
-    def __init__(self, folder, model):
+    root_dir = Path.home() / '.wwork'
+    extension = 'ww'
+
+    def __init__(self, file_name: str):
         """Initialize class instance."""
-        self.model = model
-        self.base_path = STORAGE_PATH.joinpath(folder or '')
-        Path(self.base_path).mkdir(exist_ok=True)
+        self.root_dir.mkdir(exist_ok=True)
 
-    def get(self, *args, **kwargs):
-        """Get model instance."""
-        file_path = self.get_file_path(*args, **kwargs)
-        if not self.check_file_exists(file_path):
-            raise exceptions.FileDoesNotExist(file_path)
+        self._path = self.root_dir / f'{file_name}.{self.extension}'
+        self._data: Union[list, dict] = None
 
-        return self.model(file_path=file_path)
-
-    def create(self, *args, **kwargs):
-        """Create model instance."""
-        file_path = self.get_file_path(*args, **kwargs)
-        if self.check_file_exists(file_path):
-            raise exceptions.FileAlreadyExists(file_path)
-
-        return self.model(file_path=file_path)
-
-    def check_file_exists(self, path: Path) -> bool:
+    @property
+    def exists(self) -> bool:
         """Check if file exists or not."""
-        return path.is_file()
+        return self._path.is_file()
 
-    def get_file_path(self, *args, **kwargs):
-        """Get result file path."""
-        filename = self.model.get_file_name(*args, **kwargs)
-        return self.base_path.joinpath(filename)
+    @property
+    def data(self) -> Union[list, dict]:
+        """Get file data."""
+        if self._data is None:
+            self.load()  # Load file only once
+        return self._data
 
+    def load(self):
+        """Read file and get data."""
+        if self.exists:
+            with open(self._path, 'rb') as f:
+                self._data = pickle.loads(f.read())
+        else:
+            self._data = self.create_default()
 
-class File:
-    folder = None
-
-    def __init__(self, file_path: Path):
-        """Initialize class instance."""
-        self.file_path = file_path
-        self._data = {}
-        self.read()
-
-    def __repr__(self):
-        return f'<{self.__class__.__name__}: {self.file_path.name}>'
-
-    @debugger
-    def read(self):
-        with shelve.open(self.file_path._str) as db:
-            for key, value in db.items():
-                self._data[key] = value
-
-    @debugger
     def save(self):
-        with shelve.open(self.file_path._str) as db:
-            for key, value in self._data.items():
-                db[key] = value
+        """Save data back to file."""
+        if not self.exists:
+            self._path.touch()
 
-    @classproperty
-    def objects(cls):
-        return FileManager(cls.folder, cls)
+        with open(self._path, 'wb+') as f:
+            f.write(pickle.dumps(self.data))
 
-    @classmethod
-    def get_file_name(cls, *args, **kwargs):
+    def terminate(self):
+        """Delete file itself."""
+        if self.exists:
+            os.remove(self._path)
+
+    def create_default(self) -> Union[list, dict]:
+        """Create default `data` value."""
         raise NotImplementedError
 
 
-class WorkLog(File):
-    folder = 'logs'
+class LogFile(BaseFile):
+    """File with log entries."""
 
-    def __init__(self, *args, **kwargs):
-        """Initialize class instance."""
-        super().__init__(*args, **kwargs)
-        self._data.setdefault('entries', [])
-        self.max_task_length = len(max(
-            self._data['entries'],
-            key=lambda x: len(x['task'] or '')
-        )['task'] or '')
+    default_type = dict
+
+    def create_default(self) -> dict:
+        """Create default log file data."""
+        return {
+            'logs': [],
+            'report': [],
+        }
 
     @property
-    def entries(self):
-        """Get log entries."""
-        return [
-            Entry.from_json(value)
-            for value in self._data['entries']
-        ]
+    def logs(self):
+        return self.data['logs']
 
-    @classmethod
-    def get_file_name(cls, date):
-        """Get file name."""
-        return f'{date}.ww'
+    @property
+    def report(self):
+        return self.data['report']
 
-    def add(self, entry: Entry):
-        """Add entry to log."""
-        if not isinstance(entry, Entry):
-            raise ValueError('entry must be ``Entry`` instance')
+    def add_entry(self, **kwargs):
+        """Add new log entry."""
+        new_entry = LogEntry(**kwargs)
+        self.logs.append(new_entry)
+        return new_entry
 
-        self._data['entries'].append(entry.to_json())
+    @property
+    def last_time(self) -> time:
+        """Get last log time."""
+        return self.logs[-1].command_time if self.logs else None
 
-    def add_and_save(self, entry: Entry):
-        """Add entry to log and save it."""
-        self.add(entry=entry)
-        self.save()
+    @property
+    def last_time_str(self) -> str:
+        """Get last log time (as string)."""
+        return self.last_time.strftime(TIME_FORMAT)
 
+    @property
+    def last_command_duration(self) -> int:
+        """Get last command duration (in minutes)."""
+        if len(self.logs) < 2:
+            raise ValueError('Cannot get duration if there are less than 2 commands')
 
-class Settings(File):
-
-    @classmethod
-    def get_file_name(cls):
-        """Get file name."""
-        return 'settings.ww'
-
-    def get_language(self):
-        return self._data['language']
-
-    def set_language(self, language):
-        self._data['language'] = language
+        duration: timedelta = self.logs[-1] - self.logs[-2]
+        return duration.seconds // 60
